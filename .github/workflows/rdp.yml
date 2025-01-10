@@ -1,3 +1,4 @@
+
 name: TOOLBOXLAP
 
 on:
@@ -8,46 +9,29 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    # الخطوة الأولى: سحب المستودع
     - name: Check out the repository
       uses: actions/checkout@v2
 
-    # الخطوة الثانية: تنزيل وتثبيت Playit
     - name: Download and Install Playit
       run: |
         Invoke-WebRequest -Uri "https://github.com/playit-cloud/playit-agent/releases/download/v0.15.26/playit-windows-x86_64-signed.exe" -OutFile "$env:USERPROFILE\playit.exe"
-        Start-Sleep -Seconds 5
+        Start-Sleep -Seconds 5  # Give some time for the download to complete
+        
+    # Default, optional.
+    - name: Enable TS
+      run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server'-name "fDenyTSConnections" -Value 0
+    - run: Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+    - run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
+    - run: Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "admin@123" -Force)
 
-    # الخطوة الثالثة: إعدادات Remote Desktop
-    - name: Enable Remote Desktop
-      run: |
-        # تمكين الاتصال عن بعد
-        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
-        # فتح قواعد جدار الحماية الخاصة بـ RDP
-        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-        # تفعيل مصادقة المستخدم
-        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 1
-        # تعيين كلمة مرور للمستخدم
-        Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "admin@123" -Force)
-        # التأكد من أن خدمة RDP تعمل تلقائيًا عند الإقلاع
-        Set-Service -Name "TermService" -StartupType Automatic
-        Start-Service -Name "TermService"
-
-    # الخطوة الرابعة: تشغيل Playit لتمكين النفق
-    - name: Start Playit Tunnel
+    - name: www.toolboxlap.com
       env:
-        PLAYIT_AUTH_KEY: ${{ secrets.PL }}
+        PLAYIT_AUTH_KEY: ${{ secrets.PL }} 
       run: |
         Start-Process -FilePath "$env:USERPROFILE\playit.exe" -ArgumentList "--secret $env:PLAYIT_AUTH_KEY" -NoNewWindow -Wait
-
-    # الخطوة الخامسة: إبقاء Remote Desktop قيد التشغيل
-    - name: Keep Remote Desktop and Workflow Alive
+        Start-Process -FilePath "$env:USERPROFILE\playit.exe" -NoNewWindow
+    #  www.toolboxlap.com
+    # Prevent workflow to stop
+    - name: Keep the GitHub Action Runner Alive
       run: |
-        while ($true) {
-          # التحقق من حالة خدمة RDP وإعادة تشغيلها إذا توقفت
-          $service = Get-Service -Name "TermService"
-          if ($service.Status -ne "Running") {
-            Start-Service -Name "TermService"
-          }
-          Start-Sleep -Seconds 300  # التحقق كل 5 دقائق
-        }
+          Start-Sleep -Seconds 21600  # Adjust the duration based on your needs
